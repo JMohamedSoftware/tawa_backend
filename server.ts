@@ -24,12 +24,12 @@ mongoose.connect(MONGO_URI)
     const catCount = await Category.countDocuments();
     if (catCount === 0) {
       await Category.insertMany([
-        { name: "Plumber", slug: "plumber", icon: "Droplets" },
-        { name: "Electrician", slug: "electrician", icon: "Zap" },
-        { name: "Carpenter", slug: "carpenter", icon: "Hammer" },
-        { name: "AC Technician", slug: "ac-technician", icon: "Wind" },
-        { name: "Painter", slug: "painter", icon: "Paintbrush" },
-        { name: "Gardener", slug: "gardener", icon: "Leaf" }
+        { name: "سباك (بلومبي)", slug: "plumber", icon: "Droplets" },
+        { name: "كهربائي", slug: "electrician", icon: "Zap" },
+        { name: "نجار", slug: "carpenter", icon: "Hammer" },
+        { name: "فني تكييف", slug: "ac-technician", icon: "Wind" },
+        { name: "دهان (صباغ)", slug: "painter", icon: "Paintbrush" },
+        { name: "بستاني", slug: "gardener", icon: "Leaf" }
       ]);
       console.log("Categories seeded!");
     }
