@@ -124,7 +124,10 @@ async function startServer() {
 
   const storage = multer.diskStorage({
     destination: "uploads/",
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+    filename: (req, file, cb) => {
+      const safeName = file.originalname.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      cb(null, Date.now() + "-" + safeName);
+    }
   });
   const upload = multer({ storage });
 
