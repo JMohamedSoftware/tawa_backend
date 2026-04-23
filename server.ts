@@ -57,6 +57,28 @@ async function startServer() {
     cors: { origin: "*", methods: ["GET", "POST"] }
   });
 
+  const triggerN8nWorkflow = async (artisan: any) => {
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (!webhookUrl) return;
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'artisan_approved',
+          name: artisan.user_id?.full_name,
+          category: artisan.category_id?.name,
+          bio: artisan.bio,
+          profileUrl: `https://tawa.tn/artisan/${artisan._id}`,
+          imageUrl: artisan.profile_image || ""
+        })
+      });
+      console.log("n8n workflow triggered for:", artisan._id);
+    } catch (err) {
+      console.error("n8n trigger failed:", err);
+    }
+  };
+
   io.on("connection", (socket) => {
     socket.on("register", (userId) => {
       socket.join(`user_${userId}`);
@@ -248,10 +270,15 @@ async function startServer() {
     if (req.user.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
     const { artisanId, status } = req.body;
     const isVerified = status === 'approved' ? 1 : 0;
-    await ArtisanProfile.findByIdAndUpdate(artisanId, {
+    const profile = await ArtisanProfile.findByIdAndUpdate(artisanId, {
       verification_status: status,
       is_verified: isVerified
-    });
+    }).populate('user_id category_id');
+
+    if (status === 'approved' && profile) {
+      triggerN8nWorkflow(profile);
+    }
+
     res.json({ success: true });
   });
 
