@@ -15,7 +15,7 @@ import { User, Category, ArtisanProfile, ArtisanDocument, ServiceRequest, Artisa
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "artisan-tn-secret-key-2026";
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/harifi_db";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/tawa_db";
 
 mongoose.connect(MONGO_URI)
   .then(async () => {
