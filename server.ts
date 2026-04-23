@@ -139,7 +139,7 @@ async function startServer() {
       let query: any = { is_verified: 1 };
       
       if (categorySlug) {
-        const cat = await Category.findOne({ slug: categorySlug });
+        const cat = await Category.findOne({ slug: categorySlug as string });
         if (cat) query.category_id = cat._id;
       }
 
