@@ -317,13 +317,14 @@ async function startServer() {
 
   // Service Requests
   app.post("/api/requests", authenticate, async (req: any, res) => {
-    const { artisanId, categoryId, description, lat, lng } = req.body;
+    const { artisanId, categoryId, description, lat, lng, scheduled_at } = req.body;
     try {
       const sr = await ServiceRequest.create({
         client_id: req.user.id,
         artisan_id: artisanId,
         category_id: categoryId,
-        description, lat, lng
+        description, lat, lng,
+        scheduled_at: scheduled_at ? new Date(scheduled_at) : null
       });
 
       // Notify Artisan in real-time

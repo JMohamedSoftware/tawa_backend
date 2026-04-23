@@ -61,6 +61,7 @@ const serviceRequestSchema = new mongoose.Schema({
   lng: Number,
   rating: Number,
   review: String,
+  scheduled_at: Date,
   created_at: { type: Date, default: Date.now }
 });
 serviceRequestSchema.set('toJSON', transformObjectId);
