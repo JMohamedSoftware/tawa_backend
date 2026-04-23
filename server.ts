@@ -10,7 +10,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
 
-import { User, Category, ArtisanProfile, ArtisanDocument, ServiceRequest, ArtisanPhoto } from "./models.js";
+import { User, Category, ArtisanProfile, ArtisanDocument, ServiceRequest, ArtisanPhoto, ChatMessage } from "./models.js";
 
 dotenv.config();
 
@@ -364,6 +364,104 @@ async function startServer() {
     }
 
     res.json({ success: true });
+  });
+
+  // ─── Rating System ───────────────────────────────────────────────
+  app.post("/api/requests/:id/rate", authenticate, async (req: any, res) => {
+    const { rating, review } = req.body;
+    const reqDoc = await ServiceRequest.findById(req.params.id) as any;
+    if (!reqDoc) return res.status(404).json({ error: "Not found" });
+    if (reqDoc.client_id.toString() !== req.user.id) return res.status(403).json({ error: "Forbidden" });
+    if (reqDoc.status !== 'completed') return res.status(400).json({ error: "Can only rate completed requests" });
+
+    reqDoc.rating = rating;
+    reqDoc.review = review;
+    await reqDoc.save();
+
+    // Update artisan avg_rating
+    const allRated = await ServiceRequest.find({ artisan_id: reqDoc.artisan_id, rating: { $exists: true, $ne: null } });
+    const avg = allRated.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / allRated.length;
+    await ArtisanProfile.findByIdAndUpdate(reqDoc.artisan_id, { avg_rating: Math.round(avg * 10) / 10 });
+
+    res.json({ success: true });
+  });
+
+  // ─── Client Profile ───────────────────────────────────────────────
+  app.get("/api/client/profile", authenticate, async (req: any, res) => {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  });
+
+  app.put("/api/client/profile", authenticate, async (req: any, res) => {
+    const { fullName, currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id) as any;
+    if (!user) return res.status(404).json({ error: "Not found" });
+
+    if (fullName) user.full_name = fullName;
+
+    if (currentPassword && newPassword) {
+      const match = await bcrypt.compare(currentPassword, user.password);
+      if (!match) return res.status(400).json({ error: "Current password incorrect" });
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    await user.save();
+    res.json({ success: true, user: { id: user._id, email: user.email, fullName: user.full_name, role: user.role } });
+  });
+
+  // ─── Chat ─────────────────────────────────────────────────────────
+  app.get("/api/chat/:artisanProfileId/:clientId", authenticate, async (req: any, res) => {
+    const { artisanProfileId, clientId } = req.params;
+    const roomId = `${clientId}_${artisanProfileId}`;
+    
+    const messages = await ChatMessage.find({ room_id: roomId })
+      .populate('sender_id')
+      .sort({ created_at: 1 });
+
+    const enriched = messages.map((m: any) => ({
+      ...m.toJSON(),
+      sender_name: (m.sender_id as any)?.full_name,
+      is_mine: (m.sender_id as any)?._id?.toString() === req.user.id
+    }));
+
+    res.json(enriched);
+  });
+
+  app.post("/api/chat/:artisanProfileId/:clientId", authenticate, async (req: any, res) => {
+    const { message } = req.body;
+    const { artisanProfileId, clientId } = req.params;
+    const roomId = `${clientId}_${artisanProfileId}`;
+
+    const profile = await ArtisanProfile.findById(artisanProfileId);
+    if (!profile) return res.status(404).json({ error: "Artisan not found" });
+
+    const msg = await ChatMessage.create({
+      room_id: roomId,
+      sender_id: req.user.id,
+      message
+    });
+
+    // Notify the other party
+    const recipientId = req.user.id === clientId ? profile.user_id : clientId;
+    
+    io.to(`user_${recipientId}`).emit("new_message", {
+      room_id: roomId,
+      message,
+      sender_id: req.user.id,
+      artisanProfileId,
+      clientId
+    });
+
+    // Mirror to sender for multi-device sync
+    io.to(`user_${req.user.id}`).emit("new_message", {
+      room_id: roomId,
+      message,
+      sender_id: req.user.id,
+      artisanProfileId,
+      clientId
+    });
+
+    res.json({ success: true, messageId: msg._id });
   });
 
   const PORT = process.env.PORT || 3000;

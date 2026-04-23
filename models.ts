@@ -73,9 +73,19 @@ const artisanPhotoSchema = new mongoose.Schema({
 });
 artisanPhotoSchema.set('toJSON', transformObjectId);
 
+
+const chatMessageSchema = new mongoose.Schema({
+  room_id: { type: String, required: true }, // e.g. `${clientId}_${artisanProfileId}`
+  sender_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  message: { type: String, required: true },
+  created_at: { type: Date, default: Date.now }
+});
+chatMessageSchema.set('toJSON', transformObjectId);
+
 export const User = mongoose.model('User', userSchema);
 export const Category = mongoose.model('Category', categorySchema);
 export const ArtisanProfile = mongoose.model('ArtisanProfile', artisanProfileSchema);
 export const ArtisanDocument = mongoose.model('ArtisanDocument', artisanDocumentSchema);
 export const ServiceRequest = mongoose.model('ServiceRequest', serviceRequestSchema);
 export const ArtisanPhoto = mongoose.model('ArtisanPhoto', artisanPhotoSchema);
+export const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
