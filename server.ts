@@ -59,7 +59,7 @@ async function startServer() {
     cors: { origin: "*", methods: ["GET", "POST"] }
   });
 
-  const triggerN8nWorkflow = async (artisan: any) => {
+  const triggerN8nWorkflow = async (artisan: any, type = 'artisan_approved') => {
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) return;
     try {
@@ -67,11 +67,12 @@ async function startServer() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'artisan_approved',
-          name: artisan.user_id?.full_name,
-          category: artisan.category_id?.name,
-          bio: artisan.bio,
-          profileUrl: `https://tawa.tn/artisan/${artisan._id}`,
+          type,
+          name: artisan.user_id?.full_name || artisan.full_name,
+          phone: artisan.user_id?.phone || artisan.phone,
+          category: artisan.category_id?.name || artisan.category_name || "لم يتم التحديد بعد",
+          bio: artisan.bio || "",
+          profileUrl: `https://tawa.tn/artisan/${artisan._id || artisan.id}`,
           imageUrl: artisan.profile_image || ""
         })
       });
@@ -154,7 +155,8 @@ async function startServer() {
       const user = await User.create({ email, password: hashedPassword, full_name: fullName, role, phone: phone || "00 000 000" });
 
       if (role === 'artisan') {
-        await ArtisanProfile.create({ user_id: user._id });
+        const profile = await ArtisanProfile.create({ user_id: user._id });
+        triggerN8nWorkflow({ ...profile.toJSON(), user_id: user }, 'artisan_registered');
       }
 
       const token = jwt.sign({ id: user._id, email, role }, JWT_SECRET);
