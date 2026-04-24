@@ -70,6 +70,7 @@ async function startServer() {
           type,
           ...data,
           profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
+          artisanId: data.id || data._id,
           imageUrl: data.profile_image || ""
         })
       });
@@ -332,6 +333,26 @@ async function startServer() {
     }
 
     res.json({ success: true });
+  });
+
+  // Remote verification (e.g. from Telegram via n8n)
+  app.post("/api/admin/remote-verify", async (req, res) => {
+    const { artisanId, status, secret } = req.body;
+    const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || "tawa_secret_2024";
+
+    if (secret !== ADMIN_SECRET) return res.status(403).json({ error: "Invalid secret" });
+
+    const profile = await ArtisanProfile.findByIdAndUpdate(artisanId, {
+      verification_status: status,
+      is_verified: status === 'approved' ? 1 : 0,
+      contract_signed: status === 'approved'
+    }, { new: true }).populate('user_id');
+
+    if (status === 'approved' && profile) {
+      triggerN8nWorkflow(profile, 'artisan_approved');
+    }
+
+    res.json({ success: true, name: (profile?.user_id as any)?.full_name });
   });
 
   // Admin User Management
