@@ -59,7 +59,7 @@ async function startServer() {
     cors: { origin: "*", methods: ["GET", "POST"] }
   });
 
-  const triggerN8nWorkflow = async (artisan: any, type = 'artisan_approved') => {
+  const triggerN8nWorkflow = async (data: any, type = 'artisan_approved') => {
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) return;
     try {
@@ -68,12 +68,9 @@ async function startServer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
-          name: artisan.user_id?.full_name || artisan.full_name,
-          phone: artisan.user_id?.phone || artisan.phone,
-          category: artisan.category_id?.name || artisan.category_name || "لم يتم التحديد بعد",
-          bio: artisan.bio || "",
-          profileUrl: `https://tawa.tn/artisan/${artisan._id || artisan.id}`,
-          imageUrl: artisan.profile_image || ""
+          ...data,
+          profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
+          imageUrl: data.profile_image || ""
         })
       });
       console.log("n8n workflow triggered for:", artisan._id);
@@ -154,9 +151,27 @@ async function startServer() {
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await User.create({ email, password: hashedPassword, full_name: fullName, role, phone: phone || "00 000 000" });
 
+      const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
       if (role === 'artisan') {
         const profile = await ArtisanProfile.create({ user_id: user._id });
-        triggerN8nWorkflow({ ...profile.toJSON(), user_id: user }, 'artisan_registered');
+        triggerN8nWorkflow({ 
+          ...profile.toJSON(), 
+          user_id: user,
+          full_name: fullName,
+          email,
+          phone: user.phone,
+          role,
+          confirmationCode 
+        }, 'artisan_registered');
+      } else {
+        triggerN8nWorkflow({
+          full_name: fullName,
+          email,
+          phone: user.phone,
+          role,
+          confirmationCode
+        }, 'client_registered');
       }
 
       const token = jwt.sign({ id: user._id, email, role }, JWT_SECRET);
