@@ -166,7 +166,12 @@ async function startServer() {
       if (role === 'artisan') {
         const profile = await ArtisanProfile.create({ 
           user_id: user._id,
-          category_id: categoryId || null 
+          category_id: categoryId || null,
+          lat: 36.8065, // Tunis Center default
+          lng: 10.1815,
+          is_verified: 1, // Auto-verify for demo purposes
+          verification_status: 'approved',
+          is_online: 1
         });
         triggerN8nWorkflow({ 
           ...profile.toJSON(), 
