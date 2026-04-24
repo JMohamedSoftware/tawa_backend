@@ -73,7 +73,7 @@ async function startServer() {
           imageUrl: data.profile_image || ""
         })
       });
-      console.log("n8n workflow triggered for:", artisan._id);
+      console.log("n8n workflow triggered for:", data.id || data._id);
     } catch (err) {
       console.error("n8n trigger failed:", err);
     }
