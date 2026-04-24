@@ -621,7 +621,7 @@ async function startServer() {
       message
     });
 
-    // Notify the other party
+    // Notify the other party via Socket.io
     const recipientId = req.user.id === clientId ? profile.user_id : clientId;
     
     io.to(`user_${recipientId}`).emit("new_message", {
@@ -640,6 +640,33 @@ async function startServer() {
       artisanProfileId,
       clientId
     });
+
+    // Send WhatsApp notification to artisan if message is from client
+    if (req.user.id === clientId) {
+      try {
+        // Get client info with phone number
+        const clientUser = await User.findById(clientId) as any;
+        // Get artisan user info (to get their phone for WhatsApp)
+        const artisanUser = await User.findById(profile.user_id) as any;
+
+        if (artisanUser?.phone && clientUser) {
+          const webhookUrl = process.env.N8N_WEBHOOK_URL;
+          if (webhookUrl) {
+            await axios.post(webhookUrl, {
+              type: "client_message",
+              artisanPhone: artisanUser.phone,
+              artisanName: artisanUser.full_name,
+              clientName: clientUser.full_name,
+              clientPhone: clientUser.phone || "غير متوفر",
+              message: message,
+              messagePreview: message.length > 80 ? message.substring(0, 80) + "..." : message
+            });
+          }
+        }
+      } catch (err) {
+        console.error("WhatsApp notification failed:", err);
+      }
+    }
 
     res.json({ success: true, messageId: msg._id });
   });
