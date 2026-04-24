@@ -11,6 +11,7 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import axios from "axios";
 
 import { User, Category, ArtisanProfile, ArtisanDocument, ServiceRequest, ArtisanPhoto, ChatMessage } from "./models.js";
 
@@ -63,16 +64,12 @@ async function startServer() {
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) return;
     try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          ...data,
-          profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
-          artisanId: data.id || data._id,
-          imageUrl: data.profile_image || ""
-        })
+      await axios.post(webhookUrl, {
+        type,
+        ...data,
+        profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
+        artisanId: data.id || data._id,
+        imageUrl: data.profile_image || ""
       });
       console.log("n8n workflow triggered for:", data.id || data._id);
     } catch (err) {
