@@ -103,8 +103,10 @@ async function startServer() {
   });
 
   const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' ? ['https://tawa.tn', 'https://artisan-frontend.vercel.app'] : '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://tawa.tn', 'https://artisan-frontend.vercel.app', 'https://tawa-tn.vercel.app', 'https://tawa-frontend-git-main-jbeli-mohameds-projects.vercel.app'] 
+      : '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
   };
 
