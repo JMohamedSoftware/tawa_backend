@@ -146,7 +146,7 @@ async function startServer() {
   // --- API Routes ---
 
   app.post("/api/auth/register", async (req, res) => {
-    const { email, password, fullName, role, phone } = req.body;
+    const { email, password, fullName, role, phone, categoryId } = req.body;
     try {
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ error: "User already exists" });
@@ -157,7 +157,10 @@ async function startServer() {
       const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       if (role === 'artisan') {
-        const profile = await ArtisanProfile.create({ user_id: user._id });
+        const profile = await ArtisanProfile.create({ 
+          user_id: user._id,
+          category_id: categoryId || null 
+        });
         triggerN8nWorkflow({ 
           ...profile.toJSON(), 
           user_id: user,
