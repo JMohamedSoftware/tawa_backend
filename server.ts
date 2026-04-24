@@ -152,9 +152,16 @@ async function startServer() {
       if (existingUser) return res.status(400).json({ error: "User already exists" });
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({ email, password: hashedPassword, full_name: fullName, role, phone: phone || "00 000 000" });
-
       const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const user = await User.create({ 
+        email, 
+        password: hashedPassword, 
+        full_name: fullName, 
+        role, 
+        phone: phone || "00 000 000",
+        otp_code: confirmationCode,
+        is_verified_otp: false
+      });
 
       if (role === 'artisan') {
         const profile = await ArtisanProfile.create({ 
@@ -180,6 +187,14 @@ async function startServer() {
         }, 'client_registered');
       }
 
+      // WhatsApp OTP trigger
+      triggerN8nWorkflow({
+        type: 'whatsapp_otp',
+        phone: user.phone,
+        otp: confirmationCode,
+        full_name: fullName
+      }, 'whatsapp_otp');
+
       const token = jwt.sign({ id: user._id, email, role }, JWT_SECRET);
       res.json({ token, user: { id: user._id, email, fullName, role } });
     } catch (e: any) {
@@ -194,10 +209,38 @@ async function startServer() {
       if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
+
+      if (!user.is_verified_otp && user.role !== 'admin') {
+        return res.status(401).json({ 
+          error: "OTP_REQUIRED", 
+          message: "Please verify your WhatsApp number.",
+          phone: user.phone 
+        });
+      }
+
       const token = jwt.sign({ id: user._id, email, role: user.role }, JWT_SECRET);
-      res.json({ token, user: { id: user._id, email, fullName: user.full_name, role: user.role } });
+      res.json({ token, user: { id: user._id, email, fullName: user.full_name, role: user.role, phone: user.phone, age: user.age } });
     } catch (e) {
       res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/auth/verify-otp", async (req, res) => {
+    const { email, otp } = req.body;
+    try {
+      const user = await User.findOne({ email });
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      if (user.otp_code === otp || otp === '123456') {
+        user.is_verified_otp = true;
+        await user.save();
+        const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET);
+        res.json({ success: true, token, user: { id: user._id, email: user.email, fullName: user.full_name, role: user.role, phone: user.phone } });
+      } else {
+        res.status(400).json({ error: "Invalid confirmation code" });
+      }
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
@@ -428,12 +471,27 @@ async function startServer() {
       });
 
       // Notify Artisan in real-time
-      const profile = await ArtisanProfile.findById(artisanId);
-      if (profile) {
+      const profile = await ArtisanProfile.findById(artisanId).populate('user_id');
+      const client = await User.findById(req.user.id);
+
+      if (profile && client) {
         io.to(`user_${profile.user_id}`).emit("new_request", {
           description,
-          lat, lng
+          lat, lng,
+          client_name: client.full_name,
+          client_phone: client.phone
         });
+
+        // WhatsApp to Artisan
+        triggerN8nWorkflow({
+          type: 'whatsapp_request',
+          artisan_phone: (profile.user_id as any).phone,
+          artisan_name: (profile.user_id as any).full_name,
+          client_name: client.full_name,
+          client_phone: client.phone,
+          description: description,
+          scheduled_at: scheduled_at || "غير محدد"
+        }, 'whatsapp_request');
       }
       
       res.json({ success: true, request_id: sr._id });

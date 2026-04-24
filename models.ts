@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['client', 'artisan', 'admin'], required: true },
   phone: { type: String, required: true },
   age: Number,
+  is_verified_otp: { type: Boolean, default: false },
+  otp_code: String,
   created_at: { type: Date, default: Date.now }
 });
 userSchema.set('toJSON', transformObjectId);
