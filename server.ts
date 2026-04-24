@@ -169,8 +169,8 @@ async function startServer() {
           category_id: categoryId || null,
           lat: 36.8065, // Tunis Center default
           lng: 10.1815,
-          is_verified: 1, // Auto-verify for demo purposes
-          verification_status: 'approved',
+          is_verified: 0, 
+          verification_status: 'pending',
           is_online: 1
         });
         triggerN8nWorkflow({ 
@@ -522,13 +522,14 @@ async function startServer() {
       const r = doc.toJSON();
       r.category_name = (doc.category_id as any)?.name;
       r.client_name = (doc.client_id as any)?.full_name;
+      r.client_phone = (doc.client_id as any)?.phone;
       return r;
     });
     
     res.json(enriched);
   });
 
-  app.put("/api/requests/:id", authenticate, async (req: any, res) => {
+  app.patch("/api/requests/:id", authenticate, async (req: any, res) => {
     const { status } = req.body;
     const reqDoc = await ServiceRequest.findById(req.params.id);
     if (!reqDoc) return res.status(404).json({ error: "Not found" });
