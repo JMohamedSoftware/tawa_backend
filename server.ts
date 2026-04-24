@@ -355,6 +355,30 @@ async function startServer() {
     res.json({ success: true, name: (profile?.user_id as any)?.full_name });
   });
 
+  // Remote verification by Phone (for voice/text commands from n8n)
+  app.post("/api/admin/remote-verify-by-phone", async (req, res) => {
+    const { phone, secret, status } = req.body;
+    const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || "tawa_secret_2024";
+
+    if (secret !== ADMIN_SECRET) return res.status(403).json({ error: "Invalid secret" });
+
+    // Find user by phone
+    const user = await User.findOne({ phone: phone.trim() });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const profile = await ArtisanProfile.findOneAndUpdate({ user_id: user._id }, {
+      verification_status: status,
+      is_verified: status === 'approved' ? 1 : 0,
+      contract_signed: status === 'approved'
+    }, { new: true }).populate('user_id');
+
+    if (status === 'approved' && profile) {
+      triggerN8nWorkflow(profile, 'artisan_approved');
+    }
+
+    res.json({ success: true, name: user.full_name });
+  });
+
   // Admin User Management
   app.get("/api/admin/users", authenticate, async (req: any, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
