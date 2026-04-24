@@ -66,9 +66,12 @@ async function startServer() {
     try {
       await axios.post(webhookUrl, {
         type,
-        ...data,
-        profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
+        name: data.full_name || data.user_id?.full_name || data.name,
+        phone: data.phone || data.user_id?.phone,
+        category: data.category_name || data.category_id?.name || "غير محدد",
+        confirmationCode: data.confirmationCode || "",
         artisanId: data.id || data._id,
+        profileUrl: `https://tawa.tn/artisan/${data.id || data._id}`,
         imageUrl: data.profile_image || ""
       });
       console.log("n8n workflow triggered for:", data.id || data._id);
