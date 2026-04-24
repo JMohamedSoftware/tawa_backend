@@ -160,7 +160,7 @@ async function startServer() {
         role, 
         phone: phone || "00 000 000",
         otp_code: confirmationCode,
-        is_verified_otp: false
+        is_verified_otp: true
       });
 
       if (role === 'artisan') {
@@ -208,14 +208,6 @@ async function startServer() {
       const user = await User.findOne({ email }) as any;
       if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      if (!user.is_verified_otp && user.role !== 'admin') {
-        return res.status(401).json({ 
-          error: "OTP_REQUIRED", 
-          message: "Please verify your WhatsApp number.",
-          phone: user.phone 
-        });
       }
 
       const token = jwt.sign({ id: user._id, email, role: user.role }, JWT_SECRET);
