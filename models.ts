@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   full_name: { type: String, required: true },
   role: { type: String, enum: ['client', 'artisan', 'admin'], required: true },
+  phone: { type: String, required: true },
   created_at: { type: Date, default: Date.now }
 });
 userSchema.set('toJSON', transformObjectId);
@@ -36,7 +37,8 @@ const artisanProfileSchema = new mongoose.Schema({
   verification_status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   avg_rating: { type: Number, default: 0 },
   completed_jobs: { type: Number, default: 0 },
-  is_online: { type: Number, default: 1 }
+  is_online: { type: Number, default: 1 },
+  contract_signed: { type: Boolean, default: false }
 });
 artisanProfileSchema.set('toJSON', transformObjectId);
 

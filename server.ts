@@ -145,13 +145,13 @@ async function startServer() {
   // --- API Routes ---
 
   app.post("/api/auth/register", async (req, res) => {
-    const { email, password, fullName, role } = req.body;
+    const { email, password, fullName, role, phone } = req.body;
     try {
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ error: "User already exists" });
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({ email, password: hashedPassword, full_name: fullName, role });
+      const user = await User.create({ email, password: hashedPassword, full_name: fullName, role, phone: phone || "00 000 000" });
 
       if (role === 'artisan') {
         await ArtisanProfile.create({ user_id: user._id });
@@ -289,6 +289,7 @@ async function startServer() {
       const p = doc.toJSON();
       p.full_name = (doc.user_id as any)?.full_name;
       p.email = (doc.user_id as any)?.email;
+      p.phone = (doc.user_id as any)?.phone;
       p.category_name = (doc.category_id as any)?.name;
       const docs = await ArtisanDocument.find({ artisan_id: doc._id });
       return { ...p, documents: docs };
@@ -299,12 +300,13 @@ async function startServer() {
 
   app.post("/api/admin/verify", authenticate, async (req: any, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
-    const { artisanId, status } = req.body;
+    const { artisanId, status, contractSigned } = req.body;
     const isVerified = status === 'approved' ? 1 : 0;
     const profile = await ArtisanProfile.findByIdAndUpdate(artisanId, {
       verification_status: status,
-      is_verified: isVerified
-    }).populate('user_id category_id');
+      is_verified: isVerified,
+      contract_signed: contractSigned === true
+    }, { new: true }).populate('user_id category_id');
 
     if (status === 'approved' && profile) {
       triggerN8nWorkflow(profile);
