@@ -454,20 +454,22 @@ async function startServer() {
   });
 
   app.put("/api/client/profile", authenticate, async (req: any, res) => {
-    const { fullName, currentPassword, newPassword } = req.body;
+    const { fullName, currentPassword, newPassword, phone, age } = req.body;
     const user = await User.findById(req.user.id) as any;
     if (!user) return res.status(404).json({ error: "Not found" });
 
     if (fullName) user.full_name = fullName;
+    if (phone) user.phone = phone;
+    if (age) user.age = age;
 
     if (currentPassword && newPassword) {
       const match = await bcrypt.compare(currentPassword, user.password);
-      if (!match) return res.status(400).json({ error: "Current password incorrect" });
+      if (!match) return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
       user.password = await bcrypt.hash(newPassword, 10);
     }
 
     await user.save();
-    res.json({ success: true, user: { id: user._id, email: user.email, fullName: user.full_name, role: user.role } });
+    res.json({ success: true, user: { id: user._id, email: user.email, fullName: user.full_name, role: user.role, phone: user.phone, age: user.age } });
   });
 
   // ─── Chat ─────────────────────────────────────────────────────────

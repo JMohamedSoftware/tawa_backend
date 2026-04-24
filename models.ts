@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
   full_name: { type: String, required: true },
   role: { type: String, enum: ['client', 'artisan', 'admin'], required: true },
   phone: { type: String, required: true },
+  age: Number,
   created_at: { type: Date, default: Date.now }
 });
 userSchema.set('toJSON', transformObjectId);
